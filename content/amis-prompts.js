@@ -12,6 +12,13 @@
     enableSlashOverride: true
   };
 
+  // State biến cho Modal Quick Picker (khai báo trên cùng để tránh Temporal Dead Zone)
+  let modalBackdrop = null;
+  let modalSearchInput = null;
+  let modalListContainer = null;
+  let filteredModalPrompts = [];
+  let selectedModalIndex = 0;
+
   const DEFAULT_PRESETS = [
     {
       "id": "p-1791474171733",
@@ -155,12 +162,6 @@
   /* ============================================================
      MODAL QUICK PROMPT PICKER (ALT + P)
      ============================================================ */
-
-  let modalBackdrop = null;
-  let modalSearchInput = null;
-  let modalListContainer = null;
-  let filteredModalPrompts = [];
-  let selectedModalIndex = 0;
 
   function initPromptModal() {
     // Phím tắt Alt + P mở modal
