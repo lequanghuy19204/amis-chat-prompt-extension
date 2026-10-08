@@ -5,9 +5,6 @@
 
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 let prompts = [];
-let settings = {
-  enableSlashOverride: true
-};
 
 const DEFAULT_PRESETS = [
   {
@@ -50,12 +47,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Search in list
   document.getElementById('list-search').addEventListener('input', (e) => {
     renderTable(e.target.value.trim());
-  });
-
-  // Settings checkboxes
-  document.getElementById('setting-slash-override').addEventListener('change', async (e) => {
-    settings.enableSlashOverride = e.target.checked;
-    await saveSettings();
   });
 
   // Sort A-Z
@@ -117,11 +108,6 @@ async function loadData() {
     } else {
       prompts = res.amis_prompts;
     }
-    if (res.amis_settings) {
-      settings = Object.assign(settings, res.amis_settings);
-    }
-
-    document.getElementById('setting-slash-override').checked = settings.enableSlashOverride !== false;
 
     renderTable('');
   } catch (err) {
@@ -133,12 +119,6 @@ async function savePrompts() {
   const storage = browserAPI.storage.sync || browserAPI.storage.local;
   await storage.set({ amis_prompts: prompts });
   document.getElementById('prompt-count').textContent = prompts.length;
-}
-
-async function saveSettings() {
-  const storage = browserAPI.storage.sync || browserAPI.storage.local;
-  await storage.set({ amis_settings: settings });
-  showToast('Đã lưu cấu hình hoạt động');
 }
 
 async function handleFormSubmit(e) {

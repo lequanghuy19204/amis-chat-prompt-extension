@@ -1,32 +1,9 @@
 /* ============================================================
    AMIS Chat Custom Prompts - Content Stylesheet
-   Tương thích giao diện AMIS Chat (Hỗ trợ cả Light & Dark Theme)
+   Giao diện Modal Quick Picker (Alt + P) - Hỗ trợ Light & Dark
    ============================================================ */
 
-/* 1. Custom Items trong Native Slash Menu (.slash-command-list) */
-.slash-command-item.amis-custom-item {
-  cursor: pointer !important;
-  transition: background-color 0.15s ease !important;
-}
-
-.slash-command-item.amis-custom-item .slash-command-item__command {
-  color: #4f46e5 !important;
-  font-weight: 600 !important;
-}
-
-html.dark .slash-command-item.amis-custom-item .slash-command-item__command {
-  color: #818cf8 !important;
-}
-
-.slash-command-item.amis-custom-item.slash-command-item--active {
-  background-color: rgba(99, 102, 241, 0.12) !important;
-}
-
-html.dark .slash-command-item.amis-custom-item.slash-command-item--active {
-  background-color: rgba(99, 102, 241, 0.25) !important;
-}
-
-/* 2. Modal / Popup Quick Picker (Bảng chọn Prompt) */
+/* Modal / Popup Quick Picker (Bảng chọn Prompt) */
 .amis-prompt-modal-backdrop {
   position: fixed !important;
   top: 0 !important;
@@ -234,20 +211,6 @@ html.dark .amis-prompt-card-trigger {
 
 html.dark .amis-prompt-card-title {
   color: #f3f4f6 !important;
-}
-
-.amis-prompt-card-preview {
-  font-size: 12px !important;
-  color: #6b7280 !important;
-  line-height: 1.4 !important;
-  display: -webkit-box !important;
-  -webkit-line-clamp: 2 !important;
-  -webkit-box-orient: vertical !important;
-  overflow: hidden !important;
-}
-
-html.dark .amis-prompt-card-preview {
-  color: #9ca3af !important;
 }
 
 /* Empty state */

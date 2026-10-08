@@ -8,11 +8,8 @@
 
   const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
   let customPrompts = [];
-  let extensionSettings = {
-    enableSlashOverride: true
-  };
 
-  // State biến cho Modal Quick Picker (khai báo trên cùng để tránh Temporal Dead Zone)
+  // State biến cho Modal Quick Picker
   let modalBackdrop = null;
   let modalSearchInput = null;
   let modalListContainer = null;
@@ -51,7 +48,7 @@
   injectPageScript();
 
   // 2. Nạp dữ liệu từ storage
-  loadPromptsAndSettings();
+  loadPrompts();
 
   // 3. Lắng nghe thay đổi Storage
   if (browserAPI.storage && browserAPI.storage.onChanged) {
@@ -59,9 +56,6 @@
       if (changes.amis_prompts) {
         customPrompts = changes.amis_prompts.newValue || [];
         sendPromptsToPageScript();
-      }
-      if (changes.amis_settings) {
-        extensionSettings = Object.assign(extensionSettings, changes.amis_settings.newValue || {});
       }
     });
   }
@@ -75,13 +69,10 @@
     }
   });
 
-  // 5. Dọn dẹp nút toolbar cũ nếu có
-  document.querySelectorAll('.amis-quick-prompt-btn').forEach(b => b.remove());
-
-  // 6. Khởi tạo Modal Quick Picker (Alt + P)
+  // 5. Khởi tạo Modal Quick Picker (Alt + P)
   initPromptModal();
 
-  // 7. Nhận message từ Popup
+  // 6. Nhận message từ Popup
   if (browserAPI.runtime && browserAPI.runtime.onMessage) {
     browserAPI.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (msg && msg.action === 'INSERT_PROMPT') {
@@ -107,10 +98,10 @@
     }
   }
 
-  async function loadPromptsAndSettings() {
+  async function loadPrompts() {
     try {
       const storage = browserAPI.storage.sync || browserAPI.storage.local;
-      const res = await storage.get(['amis_prompts', 'amis_settings']);
+      const res = await storage.get(['amis_prompts']);
       if (!res.amis_prompts || res.amis_prompts.length === 0) {
         let initialPrompts = DEFAULT_PRESETS;
         try {
@@ -126,15 +117,9 @@
         }
 
         customPrompts = initialPrompts;
-        await storage.set({
-          amis_prompts: initialPrompts,
-          amis_settings: extensionSettings
-        });
+        await storage.set({ amis_prompts: initialPrompts });
       } else {
         customPrompts = res.amis_prompts;
-      }
-      if (res.amis_settings) {
-        extensionSettings = Object.assign(extensionSettings, res.amis_settings);
       }
       sendPromptsToPageScript();
     } catch (err) {
