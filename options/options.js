@@ -125,8 +125,8 @@ async function handleFormSubmit(e) {
   const trigger = document.getElementById('prompt-trigger').value.trim();
   const title = document.getElementById('prompt-title').value.trim();
 
-  if (!trigger || !title) {
-    alert('Vui lòng nhập đầy đủ Phím tắt và Tiêu đề gợi ý!');
+  if (!trigger) {
+    alert('Vui lòng nhập Phím tắt (Trigger Shortcut)!');
     return;
   }
 
@@ -243,7 +243,7 @@ function renderTable(keyword) {
       </td>
       <td><span class="td-trigger">${escapeHtml(p.trigger)}</span></td>
       <td>
-        <div class="td-title">${escapeHtml(p.title)}</div>
+        <div class="td-title">${p.title ? escapeHtml(p.title) : '<span style="color: #9ca3af; font-style: italic;">(Không có tiêu đề)</span>'}</div>
       </td>
       <td style="text-align: center;">
         <div class="td-actions">
@@ -319,9 +319,9 @@ function handleImportJson(e) {
     try {
       const imported = JSON.parse(event.target.result);
       if (Array.isArray(imported)) {
-        const valid = imported.filter(item => item.trigger && item.title);
+        const valid = imported.filter(item => item && item.trigger);
         if (valid.length === 0) {
-          alert('File JSON không đúng cấu trúc (phải có trigger và title)!');
+          alert('File JSON không đúng cấu trúc (phải có trường trigger)!');
           return;
         }
 

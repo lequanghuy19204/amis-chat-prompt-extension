@@ -45,15 +45,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const trigger = document.getElementById('new-trigger').value.trim();
     const title = document.getElementById('new-title').value.trim();
 
-    if (!trigger || !title) {
-      alert('Vui lòng nhập Phím tắt và Tiêu đề gợi ý!');
+    if (!trigger) {
+      alert('Vui lòng nhập Phím tắt (Trigger)!');
       return;
     }
 
     const newPrompt = {
       id: 'p-' + Date.now(),
       trigger: trigger,
-      title: title
+      title: title || ''
     };
 
     prompts.unshift(newPrompt);
@@ -124,7 +124,7 @@ function renderPrompts(keyword) {
           </button>
         </div>
       </div>
-      <div class="item-title">${escapeHtml(p.title)}</div>
+      ${p.title ? `<div class="item-title">${escapeHtml(p.title)}</div>` : ''}
     `;
 
     // Move Up

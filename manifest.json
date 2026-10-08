@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AMIS Chat Custom Prompts & Shortcuts",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Tùy chỉnh và ghi đè phím tắt slash (/) cùng danh sách prompt cá nhân cho AMIS Chat MISA",
   "permissions": [
     "storage"
