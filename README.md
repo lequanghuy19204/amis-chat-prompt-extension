@@ -65,3 +65,10 @@ Tiện ích mở rộng (Browser Extension) dành cho **Google Chrome, Mozilla F
      - **Phím tắt (Trigger Shortcut):** Ví dụ `[agent1]` hoặc `/prompt1`
      - **Tiêu đề gợi ý:** Ví dụ `Agent 1 cấu hình cho Working Directory`
    - Nhấn **Lưu Prompt**. Cập nhật tức thì vào khung chat MISA mà không cần tải lại trang!
+
+---
+
+## 👤 Tác giả
+
+- `@lqhuy2`
+

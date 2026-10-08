@@ -182,7 +182,7 @@
         </div>
         <div class="amis-modal-list"></div>
         <div class="amis-modal-footer">
-          <span>Dùng phím <b>↑ / ↓</b> để chọn, <b>Enter</b> để chèn, <b>Esc</b> để đóng</span>
+          <span>Dùng phím <b>↑ / ↓</b> để chọn, <b>Enter</b> để chèn | <b>@lqhuy2</b></span>
           <a class="amis-modal-footer-link" id="amis-open-options-link">⚙️ Quản lý Prompt</a>
         </div>
       </div>

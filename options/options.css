@@ -371,3 +371,25 @@ tr.drag-target-over {
   transition: opacity 0.3s ease;
   z-index: 9999;
 }
+
+/* Footer */
+.options-footer {
+  margin-top: 24px;
+  padding: 16px 24px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.options-footer .owner-badge {
+  color: #4f46e5;
+  font-weight: 500;
+  background: #eef2ff;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
