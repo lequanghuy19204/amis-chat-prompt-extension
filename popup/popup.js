@@ -64,11 +64,55 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 });
 
+const DEFAULT_PRESETS = [
+  {
+    "id": "p-1791474171733",
+    "trigger": "/goal",
+    "title": "goal"
+  },
+  {
+    "id": "p-1791474086141",
+    "trigger": "/swe-kham-pha-code",
+    "title": "kham-pha-code"
+  },
+  {
+    "id": "p-1791473326288",
+    "trigger": "/prompt 3",
+    "title": "prompt3.md"
+  },
+  {
+    "id": "p-1791473259238",
+    "trigger": "/prompt 2",
+    "title": "prompt2.md"
+  },
+  {
+    "id": "p-1791473246090",
+    "trigger": "/prompt 1",
+    "title": "prompt1.md"
+  }
+];
+
 async function loadPrompts() {
   try {
     const storage = browserAPI.storage.sync || browserAPI.storage.local;
     const res = await storage.get(['amis_prompts']);
-    prompts = res.amis_prompts || [];
+    if (!res.amis_prompts || res.amis_prompts.length === 0) {
+      let initialPrompts = DEFAULT_PRESETS;
+      try {
+        const resp = await fetch(browserAPI.runtime.getURL('amis-prompts-backup.json'));
+        if (resp.ok) {
+          const data = await resp.json();
+          if (Array.isArray(data) && data.length > 0) {
+            initialPrompts = data;
+          }
+        }
+      } catch (e) {}
+
+      prompts = initialPrompts;
+      await storage.set({ amis_prompts: initialPrompts });
+    } else {
+      prompts = res.amis_prompts;
+    }
     renderPrompts('');
   } catch (err) {
     console.error('Lỗi tải prompts:', err);

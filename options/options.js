@@ -11,34 +11,29 @@ let settings = {
 
 const DEFAULT_PRESETS = [
   {
-    id: 'p-agent1',
-    trigger: '[agent1]',
-    title: 'Agent 1 được cấu hình cho Working Directory.'
+    "id": "p-1791474171733",
+    "trigger": "/goal",
+    "title": "goal"
   },
   {
-    id: 'p-agent2',
-    trigger: '[agent2]',
-    title: 'Agent 2 được cấu hình cho Working Directory.'
+    "id": "p-1791474086141",
+    "trigger": "/swe-kham-pha-code",
+    "title": "kham-pha-code"
   },
   {
-    id: 'p-agent3',
-    trigger: '[agent3]',
-    title: 'Agent 3 được cấu hình cho Working Directory.'
+    "id": "p-1791473326288",
+    "trigger": "/prompt 3",
+    "title": "prompt3.md"
   },
   {
-    id: 'p-prompt1',
-    trigger: '/prompt1',
-    title: 'Prompt 1 tùy chỉnh cá nhân'
+    "id": "p-1791473259238",
+    "trigger": "/prompt 2",
+    "title": "prompt2.md"
   },
   {
-    id: 'p-review',
-    trigger: '/review',
-    title: 'Review Code theo Clean Code & SOLID'
-  },
-  {
-    id: 'p-spec',
-    trigger: '/misa-speckit:swe-lap-ke-hoach',
-    title: 'Tạo plan.md từ spec.md bằng Agent Team'
+    "id": "p-1791473246090",
+    "trigger": "/prompt 1",
+    "title": "prompt1.md"
   }
 ];
 
@@ -81,11 +76,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Reset default
   document.getElementById('btn-reset-default').addEventListener('click', async () => {
-    if (confirm('Bạn có chắc chắn muốn đặt lại danh sách prompt về mẫu mặc định? Các prompt tự thêm sẽ bị ghi đè.')) {
-      prompts = JSON.parse(JSON.stringify(DEFAULT_PRESETS));
+    if (confirm('Bạn có chắc chắn muốn đặt lại danh sách prompt về mẫu mặc định (từ file amis-prompts-backup.json)?')) {
+      let defaultData = DEFAULT_PRESETS;
+      try {
+        const resp = await fetch(browserAPI.runtime.getURL('amis-prompts-backup.json'));
+        if (resp.ok) {
+          const data = await resp.json();
+          if (Array.isArray(data) && data.length > 0) {
+            defaultData = data;
+          }
+        }
+      } catch (e) {}
+
+      prompts = JSON.parse(JSON.stringify(defaultData));
       await savePrompts();
       renderTable('');
-      showToast('Đã khôi phục danh sách mẫu mặc định!');
+      showToast('Đã khôi phục danh sách mẫu mặc định từ file backup!');
     }
   });
 });
@@ -94,7 +100,23 @@ async function loadData() {
   try {
     const storage = browserAPI.storage.sync || browserAPI.storage.local;
     const res = await storage.get(['amis_prompts', 'amis_settings']);
-    prompts = res.amis_prompts || DEFAULT_PRESETS;
+    if (!res.amis_prompts || res.amis_prompts.length === 0) {
+      let initialPrompts = DEFAULT_PRESETS;
+      try {
+        const resp = await fetch(browserAPI.runtime.getURL('amis-prompts-backup.json'));
+        if (resp.ok) {
+          const data = await resp.json();
+          if (Array.isArray(data) && data.length > 0) {
+            initialPrompts = data;
+          }
+        }
+      } catch (e) {}
+
+      prompts = initialPrompts;
+      await storage.set({ amis_prompts: initialPrompts });
+    } else {
+      prompts = res.amis_prompts;
+    }
     if (res.amis_settings) {
       settings = Object.assign(settings, res.amis_settings);
     }

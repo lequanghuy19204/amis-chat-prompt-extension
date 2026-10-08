@@ -14,34 +14,29 @@
 
   const DEFAULT_PRESETS = [
     {
-      id: 'p-agent1',
-      trigger: '[agent1]',
-      title: 'Agent 1 được cấu hình cho Working Directory.'
+      "id": "p-1791474171733",
+      "trigger": "/goal",
+      "title": "goal"
     },
     {
-      id: 'p-agent2',
-      trigger: '[agent2]',
-      title: 'Agent 2 được cấu hình cho Working Directory.'
+      "id": "p-1791474086141",
+      "trigger": "/swe-kham-pha-code",
+      "title": "kham-pha-code"
     },
     {
-      id: 'p-agent3',
-      trigger: '[agent3]',
-      title: 'Agent 3 được cấu hình cho Working Directory.'
+      "id": "p-1791473326288",
+      "trigger": "/prompt 3",
+      "title": "prompt3.md"
     },
     {
-      id: 'p-prompt1',
-      trigger: '/prompt1',
-      title: 'Prompt 1 tùy chỉnh cá nhân'
+      "id": "p-1791473259238",
+      "trigger": "/prompt 2",
+      "title": "prompt2.md"
     },
     {
-      id: 'p-review',
-      trigger: '/review',
-      title: 'Review Code theo Clean Code & SOLID'
-    },
-    {
-      id: 'p-spec',
-      trigger: '/misa-speckit:swe-lap-ke-hoach',
-      title: 'Tạo plan.md từ spec.md bằng Agent Team'
+      "id": "p-1791473246090",
+      "trigger": "/prompt 1",
+      "title": "prompt1.md"
     }
   ];
 
@@ -110,9 +105,22 @@
       const storage = browserAPI.storage.sync || browserAPI.storage.local;
       const res = await storage.get(['amis_prompts', 'amis_settings']);
       if (!res.amis_prompts || res.amis_prompts.length === 0) {
-        customPrompts = DEFAULT_PRESETS;
+        let initialPrompts = DEFAULT_PRESETS;
+        try {
+          const resp = await fetch(browserAPI.runtime.getURL('amis-prompts-backup.json'));
+          if (resp.ok) {
+            const data = await resp.json();
+            if (Array.isArray(data) && data.length > 0) {
+              initialPrompts = data;
+            }
+          }
+        } catch (fetchErr) {
+          // Fallback to DEFAULT_PRESETS
+        }
+
+        customPrompts = initialPrompts;
         await storage.set({
-          amis_prompts: DEFAULT_PRESETS,
+          amis_prompts: initialPrompts,
           amis_settings: extensionSettings
         });
       } else {
