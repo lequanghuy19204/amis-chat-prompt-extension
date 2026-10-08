@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AMIS Chat Prompts</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="popup-header">
+    <div class="logo-title">
+      <svg class="header-icon" viewBox="0 0 24 24">
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+      </svg>
+      <h2>AMIS Prompts</h2>
+    </div>
+    <button id="btn-open-options" class="icon-btn" title="Cài đặt & Quản lý chi tiết">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+  </header>
+
+  <div class="search-section">
+    <input type="text" id="search-input" placeholder="Tìm kiếm prompt..." autofocus>
+  </div>
+
+  <div class="actions-row">
+    <button id="btn-add-quick" class="btn-primary">
+      <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Thêm Prompt Mới
+    </button>
+  </div>
+
+  <!-- Form thêm nhanh (2 trường) -->
+  <div id="quick-add-form" class="quick-add-form hidden">
+    <h4>Thêm Prompt Nhanh</h4>
+    <input type="text" id="new-trigger" placeholder="Phím tắt (VD: /prompt1 hoặc [agent1])" autofocus>
+    <input type="text" id="new-title" placeholder="Tiêu đề gợi ý (Mô tả hiển thị)">
+    <div class="form-buttons">
+      <button id="btn-cancel-add" class="btn-secondary">Hủy</button>
+      <button id="btn-save-new" class="btn-primary">Lưu</button>
+    </div>
+  </div>
+
+  <main class="prompts-list" id="prompts-container"></main>
+
+  <footer class="popup-footer">
+    <span>💡 Gõ <b>/</b> trong chat AMIS hoặc nhấn <b>Alt + P</b></span>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

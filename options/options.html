@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cài đặt AMIS Chat Prompts</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="options-container">
+    <header class="options-header">
+      <div class="brand">
+        <svg class="brand-icon" viewBox="0 0 24 24">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+        </svg>
+        <div>
+          <h1>AMIS Chat Custom Prompts</h1>
+          <p class="subtitle">Quản lý danh sách phím tắt slash (/) và prompt mẫu cho MISA AMIS AI Chat</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btn-export-json" class="btn btn-outline">📥 Xuất JSON (Export)</button>
+        <button id="btn-import-json" class="btn btn-outline">📤 Nhập JSON (Import)</button>
+        <input type="file" id="file-import-input" accept=".json" style="display: none;">
+      </div>
+    </header>
+
+    <div class="main-layout">
+      <!-- Cột trái: Form Thêm / Sửa -->
+      <section class="form-section card">
+        <h2 id="form-title">Thêm Prompt Mới</h2>
+        <form id="prompt-form">
+          <input type="hidden" id="edit-id" value="">
+
+          <div class="form-group">
+            <label for="prompt-trigger">Phím tắt (Trigger Shortcut) <span class="required">*</span></label>
+            <input type="text" id="prompt-trigger" placeholder="Ví dụ: /prompt1 hoặc [agent1]" required autofocus>
+            <small class="hint">Nội dung này sẽ được điền vào khung chat khi chọn / Enter</small>
+          </div>
+
+          <div class="form-group">
+            <label for="prompt-title">Tiêu đề gợi ý <span class="required">*</span></label>
+            <input type="text" id="prompt-title" placeholder="Ví dụ: Agent 1 được cấu hình cho Working Directory" required>
+            <small class="hint">Tiêu đề hiển thị bên phải phím tắt trong menu gợi ý</small>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" id="btn-cancel-edit" class="btn btn-secondary hidden">Hủy sửa</button>
+            <button type="submit" id="btn-save-prompt" class="btn btn-primary">Lưu Prompt</button>
+          </div>
+        </form>
+
+        <hr class="divider">
+
+        <div class="settings-box">
+          <h3>Tùy chọn hoạt động</h3>
+          <label class="checkbox-label">
+            <input type="checkbox" id="setting-slash-override" checked>
+            <span>Hiện prompt tùy chỉnh trong menu "Danh sách lệnh" khi gõ <b>/</b></span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Cột phải: Danh sách Prompt -->
+      <section class="list-section card">
+        <div class="list-header">
+          <h2>Danh Sách Prompt (<span id="prompt-count">0</span>)</h2>
+          <div class="list-tools">
+            <input type="text" id="list-search" placeholder="Lọc prompt...">
+            <button id="btn-sort-az" class="btn btn-sm btn-outline" title="Sắp xếp danh sách theo bảng chữ cái A → Z">🔤 Sắp xếp A → Z</button>
+            <button id="btn-reset-default" class="btn btn-sm btn-ghost" title="Khôi phục lại các prompt mẫu ban đầu">Khôi phục mẫu</button>
+          </div>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="prompts-table">
+            <thead>
+              <tr>
+                <th style="width: 80px; text-align: center;">Thứ tự</th>
+                <th style="width: 170px;">Phím tắt (Trigger)</th>
+                <th>Tiêu đề gợi ý</th>
+                <th style="width: 90px; text-align: center;">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="prompts-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="options.js"></script>
+</body>
+</html>
