@@ -16,6 +16,14 @@
   let filteredModalPrompts = [];
   let selectedModalIndex = 0;
 
+  function isContextValid() {
+    try {
+      return typeof browserAPI !== 'undefined' && !!browserAPI.runtime && !!browserAPI.runtime.id;
+    } catch (e) {
+      return false;
+    }
+  }
+
   const DEFAULT_PRESETS = [
     {
       "id": "p-1791474171733",
@@ -53,6 +61,7 @@
   // 3. Lắng nghe thay đổi Storage
   if (browserAPI.storage && browserAPI.storage.onChanged) {
     browserAPI.storage.onChanged.addListener((changes) => {
+      if (!isContextValid()) return;
       if (changes.amis_prompts) {
         customPrompts = changes.amis_prompts.newValue || [];
         sendPromptsToPageScript();
@@ -111,6 +120,7 @@
   }
 
   async function loadPrompts() {
+    if (!isContextValid()) return;
     try {
       const storage = browserAPI.storage.sync || browserAPI.storage.local;
       const res = await storage.get(['amis_prompts']);
@@ -120,21 +130,18 @@
           const resp = await fetch(browserAPI.runtime.getURL('amis-prompts-backup.json'));
           if (resp.ok) {
             const data = await resp.json();
-            if (Array.isArray(data) && data.length > 0) {
-              initialPrompts = data;
-            }
+            if (Array.isArray(data) && data.length > 0) initialPrompts = data;
           }
-        } catch (fetchErr) {
-          // Fallback to DEFAULT_PRESETS
-        }
+        } catch (fetchErr) {}
 
         customPrompts = initialPrompts;
-        await storage.set({ amis_prompts: initialPrompts });
+        if (isContextValid()) await storage.set({ amis_prompts: initialPrompts });
       } else {
         customPrompts = res.amis_prompts;
       }
       sendPromptsToPageScript();
     } catch (err) {
+      if (err?.message?.includes('Extension context invalidated')) return;
       console.error('[AMIS Prompts] Lỗi nạp dữ liệu:', err);
     }
   }
@@ -161,23 +168,22 @@
      ============================================================ */
 
   async function handleCapturedApi(apiData) {
-    if (!apiData) return;
+    if (!apiData || !isContextValid()) return;
     try {
-      // BẮT BUỘC dùng storage.local để tránh lỗi 8KB quota của storage.sync
       await browserAPI.storage.local.set({ amis_captured_api: apiData });
       console.log('[AMIS Prompts] 🟢 Đã lưu API gửi tin nhắn vào storage.local:', apiData.url);
       showInPageNotification(`🟢 [AMIS Prompts] Đã bắt thành công API gửi tin nhắn!`);
     } catch (e) {
+      if (e?.message?.includes('Extension context invalidated')) return;
       console.error('[AMIS Prompts] Lỗi lưu API vào storage:', e);
     }
   }
 
   async function handleRecentRequest(reqData) {
-    if (!reqData) return;
+    if (!reqData || !isContextValid()) return;
     try {
       const res = await browserAPI.storage.local.get(['amis_recent_requests']);
-      let recents = res.amis_recent_requests || [];
-      recents = recents.filter(r => r.url !== reqData.url);
+      let recents = (res.amis_recent_requests || []).filter(r => r.url !== reqData.url);
       recents.unshift(reqData);
       if (recents.length > 5) recents = recents.slice(0, 5);
       await browserAPI.storage.local.set({ amis_recent_requests: recents });
@@ -186,7 +192,7 @@
 
   async function handleTestSendApi(message, cachedApi) {
     let api = cachedApi;
-    if (!api) {
+    if (!api && isContextValid()) {
       const res = await browserAPI.storage.local.get(['amis_captured_api']);
       api = res.amis_captured_api;
     }
@@ -224,15 +230,25 @@
   }
 
   let isCheckingScheduler = false;
+  let schedulerTimer = null;
 
   function initScheduler() {
-    // Kiểm tra lịch mỗi 15 giây
-    setInterval(checkScheduler, 15000);
-    // Kiểm tra lần đầu sau 3 giây
+    schedulerTimer = setInterval(checkScheduler, 15000);
     setTimeout(checkScheduler, 3000);
   }
 
+  function stopScheduler() {
+    if (schedulerTimer) {
+      clearInterval(schedulerTimer);
+      schedulerTimer = null;
+    }
+  }
+
   async function checkScheduler() {
+    if (!isContextValid()) {
+      stopScheduler();
+      return;
+    }
     if (isCheckingScheduler) return;
     isCheckingScheduler = true;
     try {
@@ -276,10 +292,14 @@
         }
       }
 
-      if (changed) {
+      if (changed && isContextValid()) {
         await syncStore.set({ amis_schedules: schedules });
       }
     } catch (err) {
+      if (err?.message?.includes('Extension context invalidated')) {
+        stopScheduler();
+        return;
+      }
       console.error('[AMIS Scheduler] Lỗi checkScheduler:', err);
     } finally {
       isCheckingScheduler = false;
@@ -287,6 +307,7 @@
   }
 
   async function addScheduleLog(logItem) {
+    if (!isContextValid()) return;
     try {
       const storage = browserAPI.storage.sync || browserAPI.storage.local;
       const res = await storage.get(['amis_schedule_logs']);
@@ -294,9 +315,7 @@
       logs.unshift({ id: 'log-' + Date.now(), ...logItem });
       if (logs.length > 30) logs = logs.slice(0, 30);
       await storage.set({ amis_schedule_logs: logs });
-    } catch (e) {
-      console.error('[AMIS Scheduler] Lỗi ghi log:', e);
-    }
+    } catch (e) {}
   }
 
   function showInPageNotification(text) {
@@ -376,6 +395,7 @@
 
     modalBackdrop.querySelector('#amis-open-options-link').addEventListener('click', (e) => {
       e.preventDefault();
+      if (!isContextValid()) return alert('Tiện ích vừa được cập nhật hoặc tải lại. Vui lòng F5 tải lại trang!');
       browserAPI.runtime.openOptionsPage ? browserAPI.runtime.openOptionsPage() : window.open(browserAPI.runtime.getURL('options/options.html'));
     });
 
