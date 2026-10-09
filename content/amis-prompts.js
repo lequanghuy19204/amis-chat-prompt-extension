@@ -66,19 +66,31 @@
 
     if (event.data.action === 'PAGE_SCRIPT_READY') {
       sendPromptsToPageScript();
+    } else if (event.data.action === 'CAPTURED_API_REQUEST') {
+      handleCapturedApi(event.data.data);
+    } else if (event.data.action === 'RECENT_POST_REQUEST') {
+      handleRecentRequest(event.data.data);
     }
   });
 
   // 5. Khởi tạo Modal Quick Picker (Alt + P)
   initPromptModal();
 
-  // 6. Nhận message từ Popup
+  // 6. Khởi tạo Scheduler Engine (Hẹn giờ gửi tin nhắn)
+  initScheduler();
+
+  // 7. Nhận message từ Popup / Options
   if (browserAPI.runtime && browserAPI.runtime.onMessage) {
     browserAPI.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (msg && msg.action === 'INSERT_PROMPT') {
         executeInsertPrompt(msg.content);
         if (sendResponse) sendResponse({ success: true });
         return true;
+      } else if (msg && msg.action === 'TEST_SEND_API') {
+        handleTestSendApi(msg.message, msg.cachedApi).then(res => {
+          if (sendResponse) sendResponse(res);
+        });
+        return true; // Async sendResponse
       }
     });
   }
@@ -145,6 +157,162 @@
   }
 
   /* ============================================================
+     BỘ QUẢN LÝ API & HẸN GIỜ (SCHEDULER ENGINE)
+     ============================================================ */
+
+  async function handleCapturedApi(apiData) {
+    if (!apiData) return;
+    try {
+      // BẮT BUỘC dùng storage.local để tránh lỗi 8KB quota của storage.sync
+      await browserAPI.storage.local.set({ amis_captured_api: apiData });
+      console.log('[AMIS Prompts] 🟢 Đã lưu API gửi tin nhắn vào storage.local:', apiData.url);
+      showInPageNotification(`🟢 [AMIS Prompts] Đã bắt thành công API gửi tin nhắn!`);
+    } catch (e) {
+      console.error('[AMIS Prompts] Lỗi lưu API vào storage:', e);
+    }
+  }
+
+  async function handleRecentRequest(reqData) {
+    if (!reqData) return;
+    try {
+      const res = await browserAPI.storage.local.get(['amis_recent_requests']);
+      let recents = res.amis_recent_requests || [];
+      recents = recents.filter(r => r.url !== reqData.url);
+      recents.unshift(reqData);
+      if (recents.length > 5) recents = recents.slice(0, 5);
+      await browserAPI.storage.local.set({ amis_recent_requests: recents });
+    } catch (e) {}
+  }
+
+  async function handleTestSendApi(message, cachedApi) {
+    let api = cachedApi;
+    if (!api) {
+      const res = await browserAPI.storage.local.get(['amis_captured_api']);
+      api = res.amis_captured_api;
+    }
+    return await triggerSendApiMessage(message || '/prompt 1', api);
+  }
+
+  function triggerSendApiMessage(content, cachedApi) {
+    return new Promise((resolve) => {
+      const reqId = 'req-' + Date.now();
+      const timeout = setTimeout(() => {
+        window.removeEventListener('message', onResult);
+        resolve({ success: false, error: 'Hết thời gian chờ phản hồi từ trang (Timeout 10s)' });
+      }, 10000);
+
+      function onResult(event) {
+        if (event.data && event.data.target === 'AMIS_CONTENT_SCRIPT' && event.data.action === 'API_SEND_RESULT') {
+          if (event.data.requestId === reqId) {
+            clearTimeout(timeout);
+            window.removeEventListener('message', onResult);
+            resolve(event.data.result || { success: false, error: 'Phản hồi rỗng' });
+          }
+        }
+      }
+
+      window.addEventListener('message', onResult);
+
+      window.postMessage({
+        target: 'AMIS_PAGE_SCRIPT',
+        action: 'EXECUTE_SEND_API',
+        customContent: content,
+        cachedApi: cachedApi,
+        requestId: reqId
+      }, '*');
+    });
+  }
+
+  let isCheckingScheduler = false;
+
+  function initScheduler() {
+    // Kiểm tra lịch mỗi 15 giây
+    setInterval(checkScheduler, 15000);
+    // Kiểm tra lần đầu sau 3 giây
+    setTimeout(checkScheduler, 3000);
+  }
+
+  async function checkScheduler() {
+    if (isCheckingScheduler) return;
+    isCheckingScheduler = true;
+    try {
+      const syncStore = browserAPI.storage.sync || browserAPI.storage.local;
+      const resConfig = await syncStore.get(['amis_schedules', 'amis_schedule_config']);
+      const resApi = await browserAPI.storage.local.get(['amis_captured_api']);
+
+      let schedules = resConfig.amis_schedules;
+      if (!Array.isArray(schedules)) {
+        schedules = resConfig.amis_schedule_config ? [{ id: 'sch-default', ...resConfig.amis_schedule_config }] : [];
+      }
+
+      const activeSchedules = schedules.filter(s => s && s.enabled && s.time);
+      if (activeSchedules.length === 0) return;
+
+      const now = new Date();
+      const currentHours = String(now.getHours()).padStart(2, '0');
+      const currentMins = String(now.getMinutes()).padStart(2, '0');
+      const currentTime = `${currentHours}:${currentMins}`;
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+      let changed = false;
+      for (const sch of activeSchedules) {
+        if (sch.time === currentTime && sch.lastSentDate !== todayStr) {
+          console.log(`[AMIS Scheduler] ⏰ Đúng ${currentTime}! Tự động gửi:`, sch.message);
+          const msgToSend = sch.message || '/prompt 1';
+          const sendResult = await triggerSendApiMessage(msgToSend, resApi.amis_captured_api);
+
+          sch.lastSentDate = todayStr;
+          if (sch.repeat === 'once') sch.enabled = false;
+          changed = true;
+
+          await addScheduleLog({
+            time: `${todayStr} ${currentTime}:${String(now.getSeconds()).padStart(2, '0')}`,
+            message: msgToSend,
+            status: sendResult.success ? 'success' : 'error',
+            details: sendResult.success ? `Thành công (HTTP ${sendResult.status || 200})` : `Thất bại: ${sendResult.error || sendResult.statusText || 'Lỗi gửi tin nhắn'}`
+          });
+
+          showInPageNotification(`[AMIS Prompts] Đã tự động gửi: "${msgToSend}" (${sendResult.success ? 'Thành công' : 'Thất bại'})`);
+        }
+      }
+
+      if (changed) {
+        await syncStore.set({ amis_schedules: schedules });
+      }
+    } catch (err) {
+      console.error('[AMIS Scheduler] Lỗi checkScheduler:', err);
+    } finally {
+      isCheckingScheduler = false;
+    }
+  }
+
+  async function addScheduleLog(logItem) {
+    try {
+      const storage = browserAPI.storage.sync || browserAPI.storage.local;
+      const res = await storage.get(['amis_schedule_logs']);
+      let logs = res.amis_schedule_logs || [];
+      logs.unshift({ id: 'log-' + Date.now(), ...logItem });
+      if (logs.length > 30) logs = logs.slice(0, 30);
+      await storage.set({ amis_schedule_logs: logs });
+    } catch (e) {
+      console.error('[AMIS Scheduler] Lỗi ghi log:', e);
+    }
+  }
+
+  function showInPageNotification(text) {
+    try {
+      const toast = document.createElement('div');
+      toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1e1b4b;color:#fff;padding:12px 18px;border-radius:8px;font-size:13px;z-index:999999;box-shadow:0 4px 16px rgba(0,0,0,0.3);border:1px solid #4f46e5;transition:opacity 0.3s ease;font-family:sans-serif;';
+      toast.textContent = text;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 350);
+      }, 5000);
+    } catch (e) {}
+  }
+
+  /* ============================================================
      MODAL QUICK PROMPT PICKER (ALT + P)
      ============================================================ */
 
@@ -157,7 +325,15 @@
       }
     });
 
-    if (document.querySelector('.amis-prompt-modal-backdrop')) return;
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupModalDom);
+    } else {
+      setupModalDom();
+    }
+  }
+
+  function setupModalDom() {
+    if (!document.body || document.querySelector('.amis-prompt-modal-backdrop')) return;
 
     modalBackdrop = document.createElement('div');
     modalBackdrop.className = 'amis-prompt-modal-backdrop';
@@ -227,7 +403,8 @@
   }
 
   function openPromptModal() {
-    if (!modalBackdrop) initPromptModal();
+    if (!modalBackdrop) setupModalDom();
+    if (!modalBackdrop) return;
     modalBackdrop.classList.add('is-open');
     modalSearchInput.value = '';
     renderModalList('');

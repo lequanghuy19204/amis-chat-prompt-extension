@@ -23,6 +23,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  // Scheduler Quick Link
+  document.getElementById('btn-goto-scheduler').addEventListener('click', () => {
+    const url = browserAPI.runtime.getURL('options/options.html?tab=scheduler');
+    browserAPI.tabs.create ? browserAPI.tabs.create({ url }) : window.open(url);
+  });
+  loadSchedulerStatus();
+
   // Toggle Quick Add Form
   const addForm = document.getElementById('quick-add-form');
   const btnAdd = document.getElementById('btn-add-quick');
@@ -117,6 +124,25 @@ async function loadPrompts() {
   } catch (err) {
     console.error('Lỗi tải prompts:', err);
   }
+}
+
+async function loadSchedulerStatus() {
+  try {
+    const storage = browserAPI.storage.sync || browserAPI.storage.local;
+    const res = await storage.get(['amis_schedules', 'amis_schedule_config']);
+    let list = res.amis_schedules;
+    if (!Array.isArray(list)) list = res.amis_schedule_config ? [res.amis_schedule_config] : [];
+    const dot = document.getElementById('scheduler-dot'), text = document.getElementById('scheduler-text');
+    if (!dot || !text) return;
+    const active = list.filter(s => s && s.enabled);
+    if (active.length > 0) {
+      dot.classList.add('active');
+      text.textContent = `Hẹn giờ: ${active.length} lịch bật (${active.map(s => s.time).slice(0, 2).join(', ')})`;
+    } else {
+      dot.classList.remove('active');
+      text.textContent = 'Hẹn giờ: Đang tắt';
+    }
+  } catch (e) {}
 }
 
 async function savePrompts() {

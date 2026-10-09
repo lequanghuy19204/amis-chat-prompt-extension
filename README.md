@@ -25,6 +25,10 @@ Tiện ích mở rộng (Browser Extension) dành cho **Google Chrome, Mozilla F
 5. **Giao diện Quản lý & Xuất/Nhập dữ liệu (Options & Popup):**
    - Thêm mới, sửa, xóa prompt linh hoạt.
    - **Xuất / Nhập JSON (Export / Import):** Dễ dàng sao lưu (backup) hoặc chia sẻ bộ phím tắt cho đồng nghiệp trong team.
+6. **⏰ Hẹn giờ gửi tin nhắn tự động (Auto Scheduler & Traced API):**
+   - **Tự động bắt (Sniff/Trace) API:** Chỉ cần gửi 1 tin nhắn bình thường trên chat MISA, tiện ích sẽ tự động ghi nhớ Endpoint, Bearer Token và Payload gửi tin nhắn.
+   - **Hẹn giờ gửi ngầm:** Đặt giờ hẹn (ví dụ: `21:00`), tiện ích tự động bắn HTTP POST request gửi lệnh (như `/prompt 1`) mà không cần mở tab chat hay đụng vào chuột/bàn phím.
+   - **Chạy không cần treo máy (Cloud / Termux):** Có nút **"📋 Copy lệnh cURL"** chứa sẵn Token xác thực để thiết lập vào GitHub Actions Cron hoặc Termux chạy tự động 24/7 khi tắt máy tính.
 
 ---
 

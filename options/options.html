@@ -25,54 +25,254 @@
       </div>
     </header>
 
-    <div class="main-layout">
-      <!-- Cột trái: Form Thêm / Sửa -->
-      <section class="form-section card">
-        <h2 id="form-title">Thêm Prompt Mới</h2>
-        <form id="prompt-form">
-          <input type="hidden" id="edit-id" value="">
+    <!-- Navigation Tabs -->
+    <nav class="options-nav-tabs">
+      <button class="tab-btn active" data-tab="tab-prompts">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Quản lý Phím tắt & Prompts
+      </button>
+      <button class="tab-btn" data-tab="tab-scheduler">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Hẹn Giờ Gửi Tin Nhắn (Auto Scheduler)
+      </button>
+    </nav>
 
-          <div class="form-group">
-            <label for="prompt-trigger">Phím tắt (Trigger Shortcut) <span class="required">*</span></label>
-            <input type="text" id="prompt-trigger" placeholder="Ví dụ: /prompt1 hoặc [agent1]" required autofocus>
-            <small class="hint">Nội dung này sẽ được điền vào khung chat khi chọn / Enter</small>
+    <!-- Tab 1: Quản lý Prompts -->
+    <div id="tab-prompts" class="tab-content">
+      <div class="main-layout">
+        <!-- Cột trái: Form Thêm / Sửa -->
+        <section class="form-section card">
+          <h2 id="form-title">Thêm Prompt Mới</h2>
+          <form id="prompt-form">
+            <input type="hidden" id="edit-id" value="">
+
+            <div class="form-group">
+              <label for="prompt-trigger">Phím tắt (Trigger Shortcut) <span class="required">*</span></label>
+              <input type="text" id="prompt-trigger" placeholder="Ví dụ: /prompt1 hoặc [agent1]" required autofocus>
+              <small class="hint">Nội dung này sẽ được điền vào khung chat khi chọn / Enter</small>
+            </div>
+
+            <div class="form-group">
+              <label for="prompt-title">Tiêu đề gợi ý (không bắt buộc)</label>
+              <input type="text" id="prompt-title" placeholder="Ví dụ: Agent 1 được cấu hình cho Working Directory">
+              <small class="hint">Tiêu đề hiển thị bên phải phím tắt trong menu gợi ý (có thể để trống)</small>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" id="btn-cancel-edit" class="btn btn-secondary hidden">Hủy sửa</button>
+              <button type="submit" id="btn-save-prompt" class="btn btn-primary">Lưu Prompt</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Cột phải: Danh sách Prompt -->
+        <section class="list-section card">
+          <div class="list-header">
+            <h2>Danh Sách Prompt (<span id="prompt-count">0</span>)</h2>
+            <div class="list-tools">
+              <input type="text" id="list-search" placeholder="Lọc prompt...">
+              <button id="btn-sort-az" class="btn btn-sm btn-outline" title="Sắp xếp danh sách theo bảng chữ cái A → Z">🔤 Sắp xếp A → Z</button>
+              <button id="btn-reset-default" class="btn btn-sm btn-ghost" title="Khôi phục lại các prompt mẫu ban đầu">Khôi phục mẫu</button>
+            </div>
           </div>
 
-          <div class="form-group">
-            <label for="prompt-title">Tiêu đề gợi ý (không bắt buộc)</label>
-            <input type="text" id="prompt-title" placeholder="Ví dụ: Agent 1 được cấu hình cho Working Directory">
-            <small class="hint">Tiêu đề hiển thị bên phải phím tắt trong menu gợi ý (có thể để trống)</small>
+          <div class="table-wrapper">
+            <table class="prompts-table">
+              <thead>
+                <tr>
+                  <th style="width: 80px; text-align: center;">Thứ tự</th>
+                  <th style="width: 170px;">Phím tắt (Trigger)</th>
+                  <th>Tiêu đề gợi ý</th>
+                  <th style="width: 90px; text-align: center;">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="prompts-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Tab 2: Hẹn Giờ Gửi Tin Nhắn -->
+    <div id="tab-scheduler" class="tab-content hidden">
+      <!-- 1. Quản lý Danh sách Hẹn giờ: Form (Trái) & Bảng Danh sách (Phải) -->
+      <div class="main-layout" style="margin-bottom: 24px;">
+        <!-- Cột trái: Form Thêm / Sửa Hẹn Giờ -->
+        <section class="form-section card">
+          <h2 id="schedule-form-title">➕ Thêm Hẹn Giờ Mới</h2>
+          <form id="scheduler-form">
+            <input type="hidden" id="edit-schedule-id" value="">
+
+            <div class="form-group">
+              <label for="schedule-time">⏰ Giờ gửi tin nhắn (HH:mm) <span class="required">*</span></label>
+              <input type="time" id="schedule-time" value="21:00" required>
+              <small class="hint">Định dạng 24h (Ví dụ: 21:00 = 9 giờ tối)</small>
+            </div>
+
+            <div class="form-group">
+              <label for="schedule-repeat">🔄 Tần suất lặp lại</label>
+              <select id="schedule-repeat" class="form-select">
+                <option value="daily">Hàng ngày (Daily - lặp lại mỗi ngày)</option>
+                <option value="once">Một lần duy nhất (Once - tự tắt sau khi gửi)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="schedule-message">💬 Nội dung / Phím tắt muốn gửi <span class="required">*</span></label>
+              <input type="text" id="schedule-message" placeholder="Ví dụ: /prompt 1 hoặc /goal" value="/prompt 1" required>
+              <div class="quick-pick-container">
+                <span class="hint">Chọn nhanh từ prompt đã lưu:</span>
+                <div id="quick-prompt-tags" class="quick-tags-list"></div>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" id="btn-cancel-schedule-edit" class="btn btn-secondary hidden">Hủy sửa</button>
+              <button type="button" id="btn-test-send-now" class="btn btn-outline" title="Gửi thử ngay 1 tin nhắn vào chat MISA để kiểm tra">🚀 Gửi Thử</button>
+              <button type="submit" id="btn-save-schedule" class="btn btn-primary">Lưu Lịch Hẹn</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Cột phải: Bảng danh sách các lịch hẹn giờ -->
+        <section class="list-section card">
+          <div class="list-header">
+            <div>
+              <h2>⏱️ Danh Sách Hẹn Giờ (<span id="schedules-count">0</span>)</h2>
+              <p class="subtitle" style="font-size: 12px; color: #6b7280; margin-top: 2px;">Bật/tắt, sửa, xóa từng cấu hình hẹn giờ tùy ý</p>
+            </div>
           </div>
 
-          <div class="form-actions">
-            <button type="button" id="btn-cancel-edit" class="btn btn-secondary hidden">Hủy sửa</button>
-            <button type="submit" id="btn-save-prompt" class="btn btn-primary">Lưu Prompt</button>
+          <div class="table-wrapper" style="max-height: 480px;">
+            <table class="prompts-table">
+              <thead>
+                <tr>
+                  <th style="width: 85px; text-align: center;">Bật/Tắt</th>
+                  <th style="width: 95px;">Giờ hẹn</th>
+                  <th style="width: 105px;">Tần suất</th>
+                  <th>Phím tắt / Nội dung</th>
+                  <th style="width: 110px; text-align: center;">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="schedules-table-body"></tbody>
+            </table>
           </div>
-        </form>
-      </section>
+        </section>
+      </div>
 
-      <!-- Cột phải: Danh sách Prompt -->
-      <section class="list-section card">
+      <!-- 2. Grid 2 cột phía dưới: Trạng thái API & Không cần treo máy -->
+      <div class="scheduler-info-grid">
+        <!-- Cột trái: Trạng thái API MISA -->
+        <section class="card scheduler-status-card">
+          <h2>🌐 Trạng Thái Kết Nối API MISA</h2>
+
+          <div id="api-status-badge" class="status-banner status-waiting">
+            <div class="status-icon">🟡</div>
+            <div>
+              <div class="status-title" id="api-status-title">Đang kiểm tra API...</div>
+              <div class="status-desc" id="api-status-desc">Chưa bắt được request gửi tin nhắn của MISA.</div>
+            </div>
+          </div>
+
+          <div class="api-details-box">
+            <div class="detail-url-section">
+              <div class="detail-url-header">
+                <span class="detail-label">🔗 Endpoint URL</span>
+                <button type="button" id="btn-copy-endpoint-url" class="btn-copy-url-icon" title="Sao chép Endpoint URL">📋 Copy URL</button>
+              </div>
+              <div class="detail-url-display" id="api-detail-url">Chưa có (hãy gửi 1 tin trên MISA)</div>
+            </div>
+
+            <div class="detail-meta-grid">
+              <div class="meta-item">
+                <span class="meta-label">⚡ Phương thức</span>
+                <span class="meta-val" id="api-detail-method">POST</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">📝 Trường text</span>
+                <span class="meta-val" id="api-detail-field">content</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">⏱️ Lần bắt</span>
+                <span class="meta-val" id="api-detail-time">Chưa có</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-footer-actions" style="display: flex; gap: 10px; margin-top: auto; padding-top: 14px;">
+            <button type="button" id="btn-copy-curl" class="btn btn-primary btn-sm" style="flex: 1;" disabled>📋 Copy lệnh cURL</button>
+            <button type="button" id="btn-clear-api" class="btn btn-outline btn-sm" title="Xóa để bắt lại API mới">🔄 Bắt lại API</button>
+          </div>
+        </section>
+
+        <!-- Cột phải: Gửi không cần treo máy & Dán cURL -->
+        <section class="card scheduler-cloud-card">
+          <h2>☁️ Gửi Không Cần Treo Máy (Cloud / Termux)</h2>
+
+          <div class="cloud-steps-list">
+            <div class="cloud-step-item">
+              <div class="cloud-step-num">1</div>
+              <div class="cloud-step-content">
+                <b>Sao chép cURL:</b> Bấm nút <code>📋 Copy lệnh cURL</code> ở bên trái khi API đã sẵn sàng.
+              </div>
+            </div>
+            <div class="cloud-step-item">
+              <div class="cloud-step-num">2</div>
+              <div class="cloud-step-content">
+                <b>Cấu hình Cron:</b> Dán vào <b>GitHub Actions</b> (lịch <code>0 14 * * *</code>) hoặc <b>Termux Android</b>.
+              </div>
+            </div>
+            <div class="cloud-step-item">
+              <div class="cloud-step-num">3</div>
+              <div class="cloud-step-content">
+                <b>Hoàn tất:</b> Đúng 21h hàng ngày tin nhắn sẽ tự gửi mà bạn có thể <b>tắt máy tính hoàn toàn</b>!
+              </div>
+            </div>
+          </div>
+
+          <!-- Nhập cURL thủ công từ F12 -->
+          <div class="manual-curl-section card-footer-actions" style="margin-top: auto; padding-top: 14px;">
+            <button type="button" id="btn-toggle-manual-curl" class="btn btn-outline btn-sm" style="width: 100%;">
+              ✏️ Nhập / Dán cURL thủ công (từ F12 Network)
+            </button>
+            <div id="manual-curl-form" class="manual-curl-form hidden" style="margin-top: 8px;">
+              <textarea id="manual-curl-input" rows="3" style="width: 100%; font-family: monospace; font-size: 11px; padding: 8px; border-radius: 6px; border: 1px solid #d1d5db;" placeholder="Mở F12 > Network > Chuột phải request chat > Copy as cURL (bash) > Dán vào đây..."></textarea>
+              <div style="display: flex; gap: 8px; margin-top: 6px; justify-content: flex-end;">
+                <button type="button" id="btn-cancel-curl" class="btn btn-secondary btn-sm">Hủy</button>
+                <button type="button" id="btn-parse-curl" class="btn btn-primary btn-sm">Phân Tích & Lưu API</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Danh sách các request gần nhất phát hiện trên MISA -->
+          <div id="recent-requests-box" class="recent-requests-box hidden" style="margin-top: 14px;">
+            <div style="font-size: 12px; font-weight: 600; color: #4b5563; margin-bottom: 6px;">📡 Các request mạng gần nhất phát hiện trên trang:</div>
+            <div id="recent-requests-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- 3. Bảng Nhật ký gửi tin nhắn (Full width) -->
+      <section class="card scheduler-logs-card" style="margin-top: 24px;">
         <div class="list-header">
-          <h2>Danh Sách Prompt (<span id="prompt-count">0</span>)</h2>
-          <div class="list-tools">
-            <input type="text" id="list-search" placeholder="Lọc prompt...">
-            <button id="btn-sort-az" class="btn btn-sm btn-outline" title="Sắp xếp danh sách theo bảng chữ cái A → Z">🔤 Sắp xếp A → Z</button>
-            <button id="btn-reset-default" class="btn btn-sm btn-ghost" title="Khôi phục lại các prompt mẫu ban đầu">Khôi phục mẫu</button>
-          </div>
+          <h2>📋 Nhật Ký Gửi Tin Nhắn Tự Động</h2>
+          <button id="btn-clear-logs" class="btn btn-sm btn-ghost">Xóa nhật ký</button>
         </div>
-
         <div class="table-wrapper">
-          <table class="prompts-table">
+          <table class="prompts-table logs-table">
             <thead>
               <tr>
-                <th style="width: 80px; text-align: center;">Thứ tự</th>
-                <th style="width: 170px;">Phím tắt (Trigger)</th>
-                <th>Tiêu đề gợi ý</th>
-                <th style="width: 90px; text-align: center;">Thao tác</th>
+                <th style="width: 170px;">Thời gian</th>
+                <th style="width: 180px;">Nội dung</th>
+                <th style="width: 120px; text-align: center;">Trạng thái</th>
+                <th>Chi tiết kết quả</th>
               </tr>
             </thead>
-            <tbody id="prompts-table-body"></tbody>
+            <tbody id="schedule-logs-body">
+              <tr>
+                <td colspan="4" style="text-align: center; padding: 24px; color: #9ca3af;">Chưa có lịch sử gửi tin nhắn nào</td>
+              </tr>
+            </tbody>
           </table>
         </div>
       </section>

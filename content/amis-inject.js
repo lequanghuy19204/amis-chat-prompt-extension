@@ -11,6 +11,10 @@
   console.log('[AMIS Prompts] Injected Script v1.3.0 initialized');
 
   window.__AMIS_CUSTOM_PROMPTS__ = [];
+  window.__AMIS_CAPTURED_API__ = null;
+
+  // Khởi động bộ bắt trace request mạng (API Sniffer)
+  initNetworkTracer();
 
   // Lắng nghe dữ liệu từ Content Script
   window.addEventListener('message', (event) => {
@@ -26,6 +30,10 @@
       }
     } else if (event.data.action === 'INSERT_PROMPT') {
       insertTriggerDirectly(event.data.trigger || event.data.content);
+    } else if (event.data.action === 'INSERT_AND_SUBMIT') {
+      insertAndSubmit(event.data.trigger || event.data.content);
+    } else if (event.data.action === 'EXECUTE_SEND_API') {
+      handleExecuteSendApi(event.data.customContent, event.data.cachedApi, event.data.requestId);
     }
   });
 
@@ -174,5 +182,326 @@
 
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function insertAndSubmit(trigger) {
+    insertTriggerDirectly(trigger);
+    setTimeout(() => {
+      // 1. Thử click nút gửi của giao diện MISA Chat
+      const sendBtn = document.querySelector('button.btn-send, button[title*="Gửi"], button[aria-label*="Gửi"], .send-icon-wrapper, .chat-send-btn, [class*="send"] button');
+      if (sendBtn) {
+        sendBtn.click();
+        return;
+      }
+
+      // 2. Fallback: Mô phỏng phím Enter trên TipTap
+      const el = document.querySelector('.tiptap.ProseMirror');
+      if (el) {
+        el.dispatchEvent(new KeyboardEvent('keydown', {
+          key: 'Enter',
+          code: 'Enter',
+          keyCode: 13,
+          which: 13,
+          bubbles: true,
+          cancelable: true
+        }));
+      }
+    }, 350);
+  }
+
+  /* ============================================================
+     BỘ TRACE & BẮT API GỬI TIN NHẮN (NETWORK TRACER)
+     ============================================================ */
+
+  function initNetworkTracer() {
+    if (window.__AMIS_NETWORK_TRACED__) return;
+    window.__AMIS_NETWORK_TRACED__ = true;
+
+    // 1. Hook window.fetch (Hỗ trợ cả String URL và Request Object)
+    const origFetch = window.fetch;
+    window.fetch = async function (resource, config) {
+      try {
+        let url = '';
+        let method = 'GET';
+        let headers = config?.headers;
+        let body = config?.body;
+
+        if (typeof resource === 'string') {
+          url = resource;
+          method = (config?.method || 'GET').toUpperCase();
+        } else if (resource && typeof resource === 'object') {
+          url = resource.url || '';
+          method = (config?.method || resource.method || 'GET').toUpperCase();
+          headers = headers || resource.headers;
+          if (!body && typeof resource.clone === 'function') {
+            try { body = await resource.clone().text(); } catch (e) {}
+          }
+        }
+
+        if (method === 'POST' || method === 'PUT') {
+          inspectAndCaptureRequest(url, method, headers, body);
+        }
+      } catch (e) {}
+      return origFetch.apply(this, arguments);
+    };
+
+    // 2. Hook XMLHttpRequest (Bắt Axios / XHR)
+    const origOpen = XMLHttpRequest.prototype.open;
+    const origSetHeader = XMLHttpRequest.prototype.setRequestHeader;
+    const origSend = XMLHttpRequest.prototype.send;
+
+    XMLHttpRequest.prototype.open = function (method, url) {
+      this.__amis_req = { method: (method || 'GET').toUpperCase(), url: url, headers: {} };
+      return origOpen.apply(this, arguments);
+    };
+
+    XMLHttpRequest.prototype.setRequestHeader = function (header, value) {
+      if (this.__amis_req && this.__amis_req.headers) {
+        this.__amis_req.headers[header] = value;
+      }
+      return origSetHeader.apply(this, arguments);
+    };
+
+    XMLHttpRequest.prototype.send = function (body) {
+      try {
+        if (this.__amis_req && (this.__amis_req.method === 'POST' || this.__amis_req.method === 'PUT')) {
+          inspectAndCaptureRequest(this.__amis_req.url, this.__amis_req.method, this.__amis_req.headers, body);
+        }
+      } catch (e) {}
+      return origSend.apply(this, arguments);
+    };
+
+    console.log('%c[AMIS Tracer] Network interceptor đã kích hoạt', 'background:#10b981;color:#fff;padding:2px 6px;border-radius:4px');
+  }
+
+  function inspectAndCaptureRequest(url, method, rawHeaders, body) {
+    if (!url || !method) return;
+    const methodUpper = method.toUpperCase();
+    if (methodUpper !== 'POST' && methodUpper !== 'PUT') return;
+
+    if (url.match(/\.(png|jpg|jpeg|gif|svg|css|woff2?|js)(\?.*)?$/i)) return;
+
+    let parsedBody = null;
+    if (typeof body === 'string') {
+      try { parsedBody = JSON.parse(body); } catch (e) { parsedBody = body; }
+    } else if (body && typeof FormData !== 'undefined' && body instanceof FormData) {
+      parsedBody = {};
+      for (const [k, v] of body.entries()) {
+        parsedBody[k] = typeof v === 'string' ? v : '[File]';
+      }
+    } else if (body && typeof body === 'object') {
+      parsedBody = body;
+    }
+
+    let fullUrl = url;
+    try { fullUrl = new URL(url, window.location.href).href; } catch (e) {}
+    const headersObj = normalizeHeaders(rawHeaders);
+
+    const urlLower = fullUrl.toLowerCase();
+    const isIgnored = urlLower.includes('/log/') ||
+                      urlLower.includes('/userbrowsertoken') ||
+                      urlLower.includes('/status-new') ||
+                      urlLower.includes('/users-info') ||
+                      urlLower.includes('/monitor/') ||
+                      urlLower.includes('/conversation-members/');
+
+    const isMessageSend = (urlLower.includes('/messages/send') || (parsedBody && parsedBody.conversationId && parsedBody.content !== undefined)) && !isIgnored;
+
+    let textFieldPath = null;
+    if (parsedBody && typeof parsedBody === 'object') {
+      textFieldPath = findTextFieldInObject(parsedBody);
+    }
+
+    const capturedInfo = {
+      url: fullUrl,
+      method: methodUpper,
+      headers: headersObj,
+      bodyTemplate: parsedBody || body,
+      textFieldPath: textFieldPath || 'content',
+      conversationUrl: window.location.href,
+      isMessageSend: isMessageSend,
+      capturedAt: Date.now()
+    };
+
+    // Bất kỳ POST request nào không phải log rác cũng lưu vào Recent Requests
+    if (!isIgnored) {
+      window.postMessage({
+        target: 'AMIS_CONTENT_SCRIPT',
+        action: 'RECENT_POST_REQUEST',
+        data: capturedInfo
+      }, '*');
+    }
+
+    // Nếu thỏa điều kiện là request gửi tin nhắn thật sự
+    if (isMessageSend) {
+      window.__AMIS_CAPTURED_API__ = capturedInfo;
+
+      console.log(
+        '%c[AMIS Tracer] 🎯 ĐÃ BẮT ĐƯỢC CHÍNH XÁC API GỬI TIN NHẮN CỦA MISA!',
+        'background: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold;'
+      );
+      console.log('📌 Endpoint:', fullUrl);
+      console.log('📌 Headers:', headersObj);
+      console.log('📌 Payload Body:', parsedBody || body);
+
+      window.postMessage({
+        target: 'AMIS_CONTENT_SCRIPT',
+        action: 'CAPTURED_API_REQUEST',
+        data: capturedInfo
+      }, '*');
+    }
+  }
+
+  function normalizeHeaders(raw) {
+    const res = {};
+    if (!raw) return res;
+    if (raw instanceof Headers) {
+      raw.forEach((val, key) => { res[key] = val; });
+    } else if (Array.isArray(raw)) {
+      raw.forEach(([k, v]) => { res[k] = v; });
+    } else if (typeof raw === 'object') {
+      Object.assign(res, raw);
+    }
+    return res;
+  }
+
+  function findTextFieldInObject(obj, prefix = '') {
+    if (!obj) return null;
+    if (Array.isArray(obj)) {
+      for (let i = 0; i < obj.length; i++) {
+        const found = findTextFieldInObject(obj[i], prefix ? `${prefix}.${i}` : `${i}`);
+        if (found) return found;
+      }
+      return null;
+    }
+    if (typeof obj !== 'object') return null;
+    const candidates = ['content', 'message', 'text', 'comment', 'body', 'messageContent', 'plainText', 'prompt', 'query', 'question', 'input', 'userMessage', 'rawText', 'command', 'data'];
+    for (const key of candidates) {
+      if (key in obj && typeof obj[key] === 'string' && obj[key].trim()) {
+        return prefix ? `${prefix}.${key}` : key;
+      }
+    }
+    for (const [k, v] of Object.entries(obj)) {
+      if (v && typeof v === 'object' && !prefix.includes('.')) {
+        const nested = findTextFieldInObject(v, prefix ? `${prefix}.${k}` : k);
+        if (nested) return nested;
+      }
+    }
+    return null;
+  }
+
+  function setDeepValue(obj, path, value) {
+    if (!obj || !path) return;
+    const parts = path.split('.');
+    let curr = obj;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (!curr[parts[i]]) curr[parts[i]] = {};
+      curr = curr[parts[i]];
+    }
+    curr[parts[parts.length - 1]] = value;
+  }
+
+  async function handleExecuteSendApi(content, cachedApi, requestId) {
+    let api = window.__AMIS_CAPTURED_API__ || cachedApi;
+
+    if (!api || !api.url) {
+      // Fallback: nếu chưa có API nhưng có TipTap editor trên trang
+      const el = document.querySelector('.tiptap.ProseMirror');
+      if (el) {
+        console.log('[AMIS API Send] Chưa có API đã lưu, sử dụng mô phỏng giao diện TipTap');
+        insertAndSubmit(content);
+        window.postMessage({
+          target: 'AMIS_CONTENT_SCRIPT',
+          action: 'API_SEND_RESULT',
+          requestId: requestId,
+          result: { success: true, simulated: true, status: 200, statusText: 'Simulated TipTap Submit' }
+        }, '*');
+        return;
+      }
+
+      window.postMessage({
+        target: 'AMIS_CONTENT_SCRIPT',
+        action: 'API_SEND_RESULT',
+        requestId: requestId,
+        result: {
+          success: false,
+          error: 'Chưa bắt được API MISA. Vui lòng mở chat MISA và gửi 1 tin nhắn để hệ thống ghi nhớ.'
+        }
+      }, '*');
+      return;
+    }
+
+    try {
+      let bodyToSend;
+      if (typeof api.bodyTemplate === 'string') {
+        try {
+          bodyToSend = JSON.parse(api.bodyTemplate);
+        } catch (e) {
+          bodyToSend = api.bodyTemplate;
+        }
+      } else {
+        bodyToSend = JSON.parse(JSON.stringify(api.bodyTemplate || {}));
+      }
+
+      if (bodyToSend && typeof bodyToSend === 'object') {
+        let textVal = content;
+        if (api.url.includes('/messages/send') && !textVal.startsWith('<p>')) {
+          textVal = `<p>${textVal}</p>`;
+        }
+        if (api.textFieldPath) {
+          setDeepValue(bodyToSend, api.textFieldPath, textVal);
+        } else {
+          bodyToSend.content = textVal;
+        }
+        if (bodyToSend.messageId !== undefined) {
+          bodyToSend.messageId = Array.from(crypto.getRandomValues(new Uint8Array(12))).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+      }
+
+      const headersToSend = { ...api.headers };
+      delete headersToSend['content-length'];
+      delete headersToSend['Content-Length'];
+      delete headersToSend['host'];
+      delete headersToSend['Host'];
+
+      console.log('[AMIS API Send] 🚀 Đang gửi tin nhắn qua HTTP POST ngầm:', api.url);
+
+      const resp = await fetch(api.url, {
+        method: api.method || 'POST',
+        headers: headersToSend,
+        body: typeof bodyToSend === 'string' ? bodyToSend : JSON.stringify(bodyToSend),
+        credentials: 'include'
+      });
+
+      const isOk = resp.ok;
+      let respSnippet = '';
+      try {
+        const text = await resp.text();
+        respSnippet = text.slice(0, 300);
+      } catch (e) {}
+
+      window.postMessage({
+        target: 'AMIS_CONTENT_SCRIPT',
+        action: 'API_SEND_RESULT',
+        requestId: requestId,
+        result: {
+          success: isOk,
+          status: resp.status,
+          statusText: resp.statusText,
+          response: respSnippet
+        }
+      }, '*');
+    } catch (err) {
+      console.error('[AMIS API Send] Lỗi gọi API:', err);
+      window.postMessage({
+        target: 'AMIS_CONTENT_SCRIPT',
+        action: 'API_SEND_RESULT',
+        requestId: requestId,
+        result: {
+          success: false,
+          error: err.message
+        }
+      }, '*');
+    }
   }
 })();

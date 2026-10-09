@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
   "name": "AMIS Chat Custom Prompts & Shortcuts",
-  "version": "1.0.7",
-  "description": "Tùy chỉnh và ghi đè phím tắt slash (/) cùng danh sách prompt cá nhân cho AMIS Chat MISA",
+  "version": "1.1.0",
+  "description": "Tùy chỉnh và ghi đè phím tắt slash (/) cùng hẹn giờ gửi tin nhắn tự động cho AMIS Chat MISA",
   "permissions": [
     "storage"
   ],
   "host_permissions": [
-    "https://misajsc.amis.vn/*"
+    "https://misajsc.amis.vn/*",
+    "https://*.amis.vn/*"
   ],
   "action": {
     "default_popup": "popup/popup.html",
@@ -27,7 +28,7 @@
       "matches": ["https://misajsc.amis.vn/*"],
       "css": ["content/amis-prompts.css"],
       "js": ["content/amis-prompts.js"],
-      "run_at": "document_idle"
+      "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [

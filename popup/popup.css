@@ -88,6 +88,63 @@ body {
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
 }
 
+/* Scheduler Bar in Popup */
+.scheduler-bar {
+  margin: 0 14px 6px;
+  padding: 6px 10px;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.scheduler-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.scheduler-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.scheduler-dot.active {
+  background-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.scheduler-text {
+  color: #374151;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scheduler-link-btn {
+  background: none;
+  border: none;
+  color: #4f46e5;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.scheduler-link-btn:hover {
+  text-decoration: underline;
+}
+
 .actions-row {
   padding: 6px 14px 10px;
 }
